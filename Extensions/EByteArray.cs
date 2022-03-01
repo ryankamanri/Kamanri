@@ -135,7 +135,6 @@ namespace Kamanri.Extensions
 				do
 				{
 					byteOffset += GetAWebSocketMessage(bytes, wsMessages, byteOffset);
-					
 				}while(bytes[byteOffset] == WebSocketMessage.IS_EFFECTIVE_CODE);
 
 			}catch(Exception e)

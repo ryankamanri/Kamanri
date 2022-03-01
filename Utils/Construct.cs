@@ -1,9 +1,9 @@
 using System;
-namespace Kamanri.Self
+namespace Kamanri.Utils
 {
 	class Construct
 	{
-		public static T DefaultConstruct<T>()
+		public static T DefaultConstructor<T>()
 		{
 			try
 			{

@@ -1,6 +1,6 @@
 using System;
 
-namespace Kamanri.Self
+namespace Kamanri.Utils
 {
 	public static class RandomGenerator
 	{

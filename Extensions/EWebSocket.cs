@@ -24,8 +24,7 @@ namespace Kamanri.Extensions
 		{
 			IList<WebSocketMessage> messages = new List<WebSocketMessage>();
 
-			WebSocketReceiveResult result = default;
-
+			WebSocketReceiveResult result;
 			do
 			{
 				try

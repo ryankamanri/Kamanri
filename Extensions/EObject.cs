@@ -45,7 +45,7 @@ namespace Kamanri.Extensions
 		/// </summary>
 		/// <param name="obj"></param>
 		/// <returns></returns>
-		public static string ToJson(this object obj, string dateTimeFormatString = "yyyy-MM-ddThh:mm:ss")
+		public static string ToJson(this object obj, string dateTimeFormatString = "yyyy-MM-ddTHH:mm:ss")
 		{
 			try
 			{

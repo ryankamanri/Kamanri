@@ -4,7 +4,7 @@ using System.Data.Common;
 using System.Dynamic;
 using System.Collections.Generic;
 using Newtonsoft.Json;
-using Kamanri.Self;
+using Kamanri.Utils;
 using Kamanri.Extensions;
 
 namespace Kamanri.Database.Models

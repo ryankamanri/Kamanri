@@ -2,6 +2,7 @@
 
   <PropertyGroup>
 	<TargetFramework>netcoreapp3.1</TargetFramework>
+	<PackageReadmeFile>Readme.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -9,6 +10,7 @@
 	<PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.0" />
 	<PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
 	<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+	<None Include="Readme.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 using System;
 using System.Text;
-namespace Kamanri.Self
+namespace Kamanri.Utils
 {
 	public static class Base64
 	{

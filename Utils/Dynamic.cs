@@ -1,7 +1,7 @@
 using System;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
-namespace Kamanri.Self
+namespace Kamanri.Utils
 {
 	public static class Dynamic
 	{

@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using Kamanri.Database.Models;
 using Kamanri.Database.Models.Relation;
-using Kamanri.Self;
+using Kamanri.Utils;
 using Kamanri.Extensions;
 
 namespace Kamanri.Database
@@ -251,7 +251,7 @@ namespace Kamanri.Database
 		{
 			if(!typeof(Entity<TEntity>).IsAssignableFrom(typeof(TEntity)))
 				throw new DataBaseModelException($"Model Type {typeof(TEntity)} Does Not Inherit From {typeof(Entity<TEntity>)}");
-			var Te = Construct.DefaultConstruct<TEntity>() as Entity<TEntity>;
+			var Te = Construct.DefaultConstructor<TEntity>() as Entity<TEntity>;
 			string SQLStatement = $"select * from {Te.TableName}";
 			IList<TEntity> result = await Te.GetList(await _sql.Query(SQLStatement,command => Te.SetParameter(command)));
 			if(result.Count == 0) return default;
@@ -270,7 +270,7 @@ namespace Kamanri.Database
 		{
 			if(!typeof(Entity<TEntity>).IsAssignableFrom(typeof(TEntity)))
 				throw new DataBaseModelException($"Model Type {typeof(TEntity)} Does Not Inherit From {typeof(Entity<TEntity>)}");
-			var Te = Construct.DefaultConstruct<TEntity>() as Entity<TEntity>;
+			var Te = Construct.DefaultConstructor<TEntity>() as Entity<TEntity>;
 			string SQLStatement = $"select * from {Te.TableName} where {candidateKeySelectionString}";
 			IList<TEntity> result = await Te.GetList(await _sql.Query(SQLStatement, command => Te.SetParameter(command)));
 			if(result.Count == 0) return new List<TEntity>();
@@ -289,8 +289,8 @@ namespace Kamanri.Database
 				throw new DataBaseModelException($"Model Type {typeof(TKeyEntity)} Does Not Inherit From {typeof(Entity<TKeyEntity>)}");
 			if (!typeof(Entity<TValueEntity>).IsAssignableFrom(typeof(TValueEntity)))
 				throw new DataBaseModelException($"Model Type {typeof(TValueEntity)} Does Not Inherit From {typeof(Entity<TValueEntity>)}");
-			var Tke = Construct.DefaultConstruct<TKeyEntity>() as Entity<TKeyEntity>;
-			var Tve = Construct.DefaultConstruct<TValueEntity>() as Entity<TValueEntity>;
+			var Tke = Construct.DefaultConstructor<TKeyEntity>() as Entity<TKeyEntity>;
+			var Tve = Construct.DefaultConstructor<TValueEntity>() as Entity<TValueEntity>;
 			string tableName = $"{Tke.TableName}_{Tve.TableName}";
 			string SQLStatement = $"select * from {tableName}";
 
@@ -498,7 +498,7 @@ namespace Kamanri.Database
 			if(!typeof(Entity<TOutputEntity>).IsAssignableFrom(typeof(TOutputEntity)))
 				throw new DataBaseModelException($"Model Type {typeof(TOutputEntity)} Does Not Inherit From {typeof(Entity<TOutputEntity>)}");
 			var i = input;
-			var o = Construct.DefaultConstruct<TOutputEntity>() as Entity<TOutputEntity>;
+			var o = Construct.DefaultConstructor<TOutputEntity>() as Entity<TOutputEntity>;
 			string iTableName = i.TableName,relationTableName = default,relationWay = default,connectedTable = default,SQLStatement = default,iTempTableName = default,oTempTableName = default;
 
 			if(type == ID_IDList.OutPutType.Key) relationTableName = $"{o.TableName}_{i.TableName}";

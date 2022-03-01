@@ -8,7 +8,7 @@ using System.Net.Mime;
 using System.Configuration;
 using System.Threading;
  
-namespace Kamanri.Self
+namespace Kamanri.Utils
 {
 	public static class EmailHelper 
 	{

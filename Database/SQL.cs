@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Data.Common;
 using Microsoft.Extensions.Logging;
-using Kamanri.Self;
+using Kamanri.Utils;
 
 namespace Kamanri.Database
 {
@@ -30,15 +30,11 @@ namespace Kamanri.Database
 			}
 		}
 
-		private readonly DbConnection connection;
-
 		private readonly ILogger _logger;
 
 		private readonly SqlConnectOptions options;
 
-		public List<KeyValuePair<DbConnection,Mutex>> connectionPool;
-
-		private int currentConnectionNumber;
+		private Pool<DbConnection> connectionPool;
 
 		private const string defaultExpression = "select * from tags where ID = -1";
 
@@ -53,13 +49,12 @@ namespace Kamanri.Database
 			SetOptions(options);
 			try
 			{
-				connectionPool = new List<KeyValuePair<DbConnection,Mutex>>();
-				for(int i = 0;i < options.NumberOfConnections; i++)
+				connectionPool = new Pool<DbConnection>(3, () => 
 				{
-					connection = SetConnection(options.ToString());
+					var connection = SetConnection(options.ToString());
 					connection.Open();
-					connectionPool.Add(new KeyValuePair<DbConnection,Mutex>(connection,new Mutex(5)));
-				}
+					return connection;
+				});
 				KeepSession();
 			}
 			catch (Exception e)
@@ -74,50 +69,28 @@ namespace Kamanri.Database
 			{
 				while (true)
 				{
-					foreach (var connectionAndMutex in connectionPool)
+					connectionPool.Map(async (connection, mutex) =>
 					{
 
-						connectionAndMutex.Value.Wait().Wait();
-						using (DbCommand command = connectionAndMutex.Key.CreateCommand())
+						mutex.Wait();
+						using DbCommand command = connection.CreateCommand();
+						try
 						{
-							try
-							{
-								command.CommandText = defaultExpression;
-								command.ExecuteReader().Close();
-								connectionAndMutex.Value.Signal();
-							}
-							catch (Exception e)
-							{
-								connectionAndMutex.Value.Signal();
-								throw new DataBaseException($"Failed To Send The Keep Session Sign \n", e);
-							}
+							command.CommandText = defaultExpression;
+							(await command.ExecuteReaderAsync()).Close();
+							mutex.Signal();
+						}
+						catch (Exception e)
+						{
+							mutex.Signal();
+							throw new DataBaseException($"Failed To Send The Keep Session Sign \n", e);
 						}
 
-					}
+					});
 					System.Threading.Thread.Sleep(4 * 60 * 60 * 1000);
 				}
 			}).Start();
 
-		}
-
-		/// <summary>
-		/// 连接池中分配空闲连接.
-		/// </summary>
-		/// <returns></returns>
-		private KeyValuePair<DbConnection,Mutex> AssignConnection()
-		{
-			for(int i = 0;i < options.NumberOfConnections; i++)
-			{
-				if(connectionPool[currentConnectionNumber].Value.mutex == false)
-				{
-					return connectionPool[currentConnectionNumber];
-				}
-				currentConnectionNumber++;
-				currentConnectionNumber %= options.NumberOfConnections;
-			}
-			_logger.LogWarning($"[{DateTime.Now}] : Current Connection Number : {currentConnectionNumber}, All Connections Are Full Used");
-			return connectionPool[currentConnectionNumber];
-			
 		}
 
 
@@ -130,22 +103,20 @@ namespace Kamanri.Database
 		/// <returns></returns>
 		public async Task<KeyValuePair<DbDataReader, Mutex>> Query(string expression)
 		{
-			var connectionAndMutex = AssignConnection();
-
-			await connectionAndMutex.Value.Wait();
-			using (DbCommand command = connectionAndMutex.Key.CreateCommand())
+			
+			var connectionAndMutex = connectionPool.AllocateAndAssignMutex();
+			connectionAndMutex.Value.Wait();
+			using DbCommand command = connectionAndMutex.Key.CreateCommand();
+			try
 			{
-				try
-				{
-					command.CommandText = expression;
-					_logger.LogDebug($"[{DateTime.Now}] : Execute The SQL Query Expression : '{expression}'");
-					return new KeyValuePair<DbDataReader, Mutex>(command.ExecuteReader(), connectionAndMutex.Value);
-				}
-				catch (Exception e)
-				{
-					connectionAndMutex.Value.Signal();
-					throw new DataBaseException($"Failed To Execute The SQL Query Expression : '{expression}'", e);
-				}
+				command.CommandText = expression;
+				_logger.LogDebug($"[{DateTime.Now}] : Execute The SQL Query Expression : '{expression}'");
+				return new KeyValuePair<DbDataReader, Mutex>(await command.ExecuteReaderAsync(), connectionAndMutex.Value);
+			}
+			catch (Exception e)
+			{
+				connectionAndMutex.Value.Signal();
+				throw new DataBaseException($"Failed To Execute The SQL Query Expression : '{expression}'", e);
 			}
 
 
@@ -154,33 +125,30 @@ namespace Kamanri.Database
 
 		public async Task<KeyValuePair<DbDataReader,Mutex>> Query(string expression, Func<DbCommand, ICollection<DbParameter>> SetParameter)
 		{
-			var connectionAndMutex = AssignConnection();
-
-			await connectionAndMutex.Value.Wait();
-			using (DbCommand command = connectionAndMutex.Key.CreateCommand())
+			var connectionAndMutex = connectionPool.AllocateAndAssignMutex();
+			connectionAndMutex.Value.Wait();
+			using DbCommand command = connectionAndMutex.Key.CreateCommand();
+			try
 			{
-				try
+				command.CommandText = expression;
+				var parameters = SetParameter(command);
+				if (parameters != null)
 				{
-					command.CommandText = expression;
-					var parameters = SetParameter(command);
-					if (parameters != null)
+					foreach (var param in parameters)
 					{
-						foreach (var param in parameters)
-						{
-							command.Parameters.Add(param);
-						}
+						command.Parameters.Add(param);
 					}
+				}
 
-					_logger.LogDebug($"[{DateTime.Now}] : Execute The SQL Query Expression : '{expression}', Set Parameters");
-					return new KeyValuePair<DbDataReader, Mutex>(command.ExecuteReader(), connectionAndMutex.Value);
-				}
-				catch (Exception e)
-				{
-					connectionAndMutex.Value.Signal();
-					throw new DataBaseException($"Failed To Execute The SQL Query Expression : '{expression}'", e);
-				}
+				_logger.LogDebug($"[{DateTime.Now}] : Execute The SQL Query Expression : '{expression}', Set Parameters");
+				return new KeyValuePair<DbDataReader, Mutex>(await command.ExecuteReaderAsync(), connectionAndMutex.Value);
 			}
-			
+			catch (Exception e)
+			{
+				connectionAndMutex.Value.Signal();
+				throw new DataBaseException($"Failed To Execute The SQL Query Expression : '{expression}'", e);
+			}
+
 		}
 
 		/// <summary>
@@ -189,9 +157,10 @@ namespace Kamanri.Database
 		/// <param name="expression">SQL表达式</param>
 		public async Task Execute(string expression)
 		{
-			var connectionAndMutex = AssignConnection();
+			var connectionAndMutex = connectionPool.AllocateAndAssignMutex();
 			try
 			{
+				connectionAndMutex.Value.Wait();
 				using (DbCommand command = connectionAndMutex.Key.CreateCommand())
 				{
 					command.CommandText = expression;
@@ -209,10 +178,10 @@ namespace Kamanri.Database
 
 		public async Task Execute(string expression, Func<DbCommand, ICollection<DbParameter>> SetParameter)
 		{
-			var connectionAndMutex = AssignConnection();
+			var connectionAndMutex = connectionPool.AllocateAndAssignMutex();
 			try
 			{
-				await connectionAndMutex.Value.Wait();
+				connectionAndMutex.Value.Wait();
 				using (DbCommand command = connectionAndMutex.Key.CreateCommand())
 				{
 					command.CommandText = expression;

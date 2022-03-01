@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Kamanri.Extensions;
-using Kamanri.Self;
+using Kamanri.Utils;
 using Kamanri.WebSockets.Model;
 using Microsoft.Extensions.Configuration;
 using System.Collections.ObjectModel;
@@ -95,7 +95,8 @@ namespace Kamanri.WebSockets
 					{
 						_logger.LogError(e, e.Message);
 						_logger.LogWarning($"[{DateTime.Now}] : The WebSocket Session Encounter The Exception, Start To Open A New Session");
-						await webSocket.CloseAsync(webSocket.CloseStatus.Value, webSocket.CloseStatusDescription + e, CancellationToken.None);
+						webSocket.Abort();
+						webSocket.Dispose();
 						BuildWebSocketSession();
 					}
 
@@ -160,6 +161,8 @@ namespace Kamanri.WebSockets
 			await webSocket.OnReceiveMessageAsync(messages =>
 			{
 				var firstMessage = messages.FirstOrDefault();
+				if(firstMessage.MessageEvent.Code == WebSocketMessageEvent.OnDisconnect.Code)
+					return WebSocketMessageService.DefaultTask;
 				if (firstMessage == default || firstMessage.MessageEvent.Code != WebSocketMessageEvent.OnConnect.Code)
 					return _wsmService.OnMessage(this, messages);
 				messages.Insert(0, new WebSocketMessage(
