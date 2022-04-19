@@ -8,6 +8,8 @@ namespace Kamanri.Utils
 
 		private int WaitTime { get; } = 5;
 
+		private readonly System.Threading.Mutex _mutex = new System.Threading.Mutex();
+
 		public Mutex(){}
 
 		public Mutex(int waitTime)
@@ -21,11 +23,13 @@ namespace Kamanri.Utils
 		}
 		public void Wait()
 		{
+			_mutex.WaitOne();
 			while (this.Flag == true)
 			{
 				Thread.Sleep(WaitTime);
 			}
 			this.Flag = true;
+			_mutex.ReleaseMutex();
 
 		}
 
