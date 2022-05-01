@@ -498,6 +498,8 @@ namespace Kamanri.Database
 			if(!typeof(Entity<TOutputEntity>).IsAssignableFrom(typeof(TOutputEntity)))
 				throw new DataBaseModelException($"Model Type {typeof(TOutputEntity)} Does Not Inherit From {typeof(Entity<TOutputEntity>)}");
 			var i = input;
+			if (i == null)
+				throw new DataBaseModelException($"Parameter `input: Entity<{typeof(TInputEntity)}>` Can NOT Be Null");
 			var o = Construct.DefaultConstructor<TOutputEntity>() as Entity<TOutputEntity>;
 			string iTableName = i.TableName,relationTableName = default,relationWay = default,connectedTable = default,SQLStatement = default,iTempTableName = default,oTempTableName = default;
 
